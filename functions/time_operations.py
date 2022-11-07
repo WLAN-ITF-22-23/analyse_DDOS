@@ -113,3 +113,23 @@ def find_interval(dict, current_time):
         
     return False
 
+
+def is_in_interval(time, interval):
+    """This function checks whether a given time string falls within a given time interval string
+
+    Args:
+        time (str): This string must be formatted as "HH:MM:SS".
+        > H: hour
+        > M: minute
+        > S: second
+        interval (str): the time interval in human readable format (ex: "00:00:00 00:30:00")
+
+    Returns:
+        bool: True or False
+    """
+    interval = interval.split(" ")
+    time     = time_string_to_seconds(time)
+    time_min = time_string_to_seconds(interval[0])
+    time_max = time_string_to_seconds(interval[1])
+
+    return time_min <= time and time <= time_max

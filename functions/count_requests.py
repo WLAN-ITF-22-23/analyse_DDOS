@@ -59,5 +59,6 @@ def create_requests_count_report(requests_count, report_name):
     """
     with open(report_name, "w") as file:
         for key in requests_count:
-            file.write(f"{key} {requests_count[key]}\n")
+            if requests_count[key] != 0:
+                file.write(f"{key} {requests_count[key]}\n")
     
