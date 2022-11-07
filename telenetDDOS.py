@@ -21,11 +21,10 @@ from functions import time_operations, create_sample, file_iteration, count_requ
 #################
 
 # Modes
-mode_testing            = True
+mode_testing            = False
 mode_create_sample      = False
 mode_use_sample         = True
-mode_count_requests     = False
-mode_analyze_report     = False
+mode_count_requests     = True
 
 # Files and folders
 current_directory       = os.getcwd()
@@ -96,11 +95,20 @@ if not(mode_testing):
         execution_output = f"File {sample_file_name} created"
 
     elif mode_count_requests:
-        request_dict = time_operations.create_time_intervals_dict(request_interval_size_seconds)
-        execution_output = "Error, this code isn't written yet"
+        time_intervals = time_operations.create_time_intervals_dict(request_interval_size_seconds)
+        requests_count = count_requests.create_requests_count_dict(time_intervals)
+        
+        file_iteration.iterate_over_file(
+            log_file_name,
+            count_requests.count_requests,
+            requests_count,
+            time_intervals
+        )
 
-    elif mode_analyze_report:
-        execution_output = "Error: this code isn't written yet"
+        count_requests.create_requests_count_report(requests_count, report_file_name)
+
+        execution_output = f"Report file {report_file_name} created successfully"
+
 
     # Descriptive text
     print(description)
@@ -111,15 +119,5 @@ if not(mode_testing):
 ### TESTING ###
 ###############
 else:
-    time_intervals = time_operations.create_time_intervals_dict(request_interval_size_seconds)
-    requests_count = count_requests.create_requests_count_dict(time_intervals)
     
-    file_iteration.iterate_over_file(
-        log_file_name,
-        count_requests.count_requests,
-        requests_count,
-        time_intervals
-    )
-    
-
     print("Test complete")

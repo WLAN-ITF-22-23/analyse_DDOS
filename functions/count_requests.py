@@ -49,28 +49,15 @@ def count_requests(requests_count, time_intervals, line):
     requests_count[interval] += 1
 
 
-# def logfile_activity_report(dict):
-#     # Variables
-#     global time_difference_seconds
-#     global reports_folder_path
 
-#     # Writing the report
-#     report_name     = f"requests_count_{time_difference_seconds}_seconds_intervals.txt"
-#     report_path_rel = f"{reports_folder_name}\\{report_name}"
-#     report_path_abs = f"{reports_folder_path}\\{report_name}"
+def create_requests_count_report(requests_count, report_name):
+    """This function generates a report file based on the dictionary created with count_requests()
 
-#     with open(report_path_rel, "w") as file:
-#         file.write("interval_start interval_end amound_of_requests")
-#         for interval in dict:
-#             file.write(f"\n{dict[interval][0]} {interval} {dict[interval][1]}")
-
-#     return f"File {report_path_rel} created"
-
+    Args:
+        requests_count (dict): a dictionary created with the count_requests() function
+        report_name (str): the name (and relative location) of the report file
+    """
+    with open(report_name, "w") as file:
+        for key in requests_count:
+            file.write(f"{key} {requests_count[key]}\n")
     
-
-# def time_interval_calculator(current_time_str, time_difference_int):
-#     current_time_int = time_string_to_seconds(current_time_str)
-#     new_time_int = current_time_int + time_difference_int
-#     new_time_str = seconds_to_time_string(new_time_int)
-
-#     return new_time_str
