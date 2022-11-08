@@ -2,6 +2,11 @@
 ### METADATA ###
 ################
 # Author: Lander Wuyts
+"""
+To do:
+- execute script for real dataset
+- generate all possible flags
+"""
 
 ###############
 ### IMPORTS ###
@@ -10,7 +15,7 @@ import os
 from random import randint
 
 # Custom functions
-from functions import time_operations, create_sample, file_iteration, count_requests, analyze_request_count
+from functions import request_count_outliers, time_operations, create_sample, file_iteration, count_requests, analyze_report
 
 ######################
 ### INITIALIZATION ###
@@ -32,7 +37,8 @@ mode_testing                = True
 mode_create_sample          = False
 mode_use_sample             = True
 mode_count_requests         = False
-mode_request_count_outliers = True
+mode_request_count_outliers = False
+mode_analyze_report         = True
 
 # Files and folders
 current_directory       = os.getcwd()
@@ -74,16 +80,14 @@ if mode_count_requests:
 elif mode_request_count_outliers:
     report_to_analyze_file_name = report_file_name + f"requests_count_{request_interval_size_seconds}_sec_intervals.txt"
     report_file_name            += f"outlier_logs_by_count_{request_interval_size_seconds}.txt"
-    
+elif mode_analyze_report:
+    report_to_analyze_file_name = report_file_name + f"outlier_logs_by_count_{request_interval_size_seconds}.txt"
 else:
     report_file_name            += "REPORT_ERROR.txt"
 
-## Analyze request count
+## Find outliers in the request count
 analysis_request_count_file_name        = initiate_name(reports_folder_name, sample_rand_number, mode_use_sample) \
-                                        + f"analysys_outlier_logs{request_interval_size_seconds}.txt"
-
-notable_logs_file_name                  = reports_folder_name + "\\"
-
+                                        + f"analysys_outlier_logs_{request_interval_size_seconds}.txt"
 
 
 
@@ -131,7 +135,49 @@ if not(mode_testing):
 
     # Mode: find outliers in the request count report
     elif mode_request_count_outliers:
-        execution_output = f"Requests analyzed, report created at {analysis_request_count_file_name}"
+        count_request_report_numbers = []
+        file_iteration.iterate_over_file(
+            report_to_analyze_file_name,
+            request_count_outliers.gather_results,
+            count_request_report_numbers
+        )
+        
+        count_request_statistical_numbers = request_count_outliers.get_statistically_relevant_numbers(count_request_report_numbers)
+
+        intervals_in_top_5 = []
+        file_iteration.iterate_over_file(
+            report_to_analyze_file_name,
+            request_count_outliers.get_intervals_within_top_5_requests,
+            intervals_in_top_5,
+            count_request_statistical_numbers["top 5"]
+        )
+
+        file_iteration.iterate_over_file(
+            log_file_name,
+            request_count_outliers.create_analysis,
+            report_file_name,
+            intervals_in_top_5
+        )
+        execution_output = f"Requests analyzed, report created at {report_file_name}"
+
+    # Mode: analyze the report with the outliers and create a new report based on the biggest outliers
+    elif mode_analyze_report:
+            outlier_source_ip_port_count    = {}
+            outlier_source_ip_count         = {}
+            file_iteration.iterate_over_file(
+                report_to_analyze_file_name,
+                analyze_report.analyze_log,
+                outlier_source_ip_port_count,
+                outlier_source_ip_count
+            )
+
+            top_size = 10
+            outlier_source_ip_port_count_top  = dict(sorted(outlier_source_ip_port_count.items(), key=lambda x : x[1], reverse=True)[:top_size])
+            outlier_source_ip_count_top       = dict(sorted(outlier_source_ip_count.items(), key=lambda x : x[1]['total'], reverse=True)[:top_size])
+
+            analyze_report.create_analysis_report(outlier_source_ip_port_count_top, analysis_request_count_file_name)
+
+            execution_output = f"Biggest outliers analyzed, report created at {analysis_request_count_file_name}"
 
     # Descriptive text
     print(description)
@@ -142,28 +188,4 @@ if not(mode_testing):
 ### TESTING ###
 ###############
 else:
-    count_request_report_numbers = []
-    file_iteration.iterate_over_file(
-        report_to_analyze_file_name,
-        analyze_request_count.gather_results,
-        count_request_report_numbers
-    )
-    
-    count_request_statistical_numbers = analyze_request_count.get_statistically_relevant_numbers(count_request_report_numbers)
-
-    intervals_in_top_5 = []
-    file_iteration.iterate_over_file(
-        report_to_analyze_file_name,
-        analyze_request_count.get_intervals_within_top_5_requests,
-        intervals_in_top_5,
-        count_request_statistical_numbers["top 5"]
-    )
-
-    file_iteration.iterate_over_file(
-        log_file_name,
-        analyze_request_count.create_analysis,
-        report_file_name,
-        intervals_in_top_5
-    )
-
     print("Test complete")
