@@ -29,7 +29,7 @@ def gather_results(result_list, line):
     result_list.append(int(line[2]))
 
 
-def get_statistically_relevant_numbers(result_list):
+def get_statistically_relevant_numbers(result_list, top_size):
     """This function analyses a list of integers and returns the median, mean and mode in a dictionary
 
     Args:
@@ -51,12 +51,7 @@ def get_statistically_relevant_numbers(result_list):
         "mode"      : statistics.mode(result_list),
         "min"       : min(result_list),
         "max"       : max(result_list),
-        "top 5"     : [
-            result_list[-5], 
-            result_list[-4], 
-            result_list[-3], 
-            result_list[-2], 
-            result_list[-1]]
+        "top"     : [result_list[(-1*i)] for i in range(1,top_size)]
         }
 
 
