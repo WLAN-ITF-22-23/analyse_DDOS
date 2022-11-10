@@ -16,7 +16,7 @@
 #################
 
 def analyze_log(ip_port_dict, ip_dict, line):
-    """This function is used to analyze logs that were deemed interesting by earlier functions, such as count_requests.\n
+    """This function is used to analyze logs that were deemed interesting by earlier functions, such as count_logs.\n
     It modifies the given dictionaries to count how many times certain values appear.
 
     Args:
@@ -29,8 +29,8 @@ def analyze_log(ip_port_dict, ip_dict, line):
         line (str): The line of the log which should be read out
     """
     line    = line.split(" ")
-    ip      = line[3]
-    port    = line[4]
+    ip      = line[5]
+    port    = line[6]
     ip_port = f"{ip} {port}"
 
     # add as "ip port" : amount

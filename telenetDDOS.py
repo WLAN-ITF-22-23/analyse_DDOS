@@ -10,16 +10,28 @@ import os
 from random import randint
 
 # Custom functions
-from helpers import count_logs, log_count_outliers, time_operations, create_sample, file_iteration, analyze_report
+from helpers import count_logs
+from helpers import log_count_outliers  as outliers
+from helpers import time_operations
+from helpers import create_sample       as sample
+from helpers import file_iteration      as iterate
+from helpers import analyze_report      as analyze
+from helpers import graph
+from helpers import flag
 
 ######################
 ### INITIALIZATION ###
 ######################
 
-def initiate_name(folder, sample_rand_number, mode_use_sample):
+def initiate_name(folder, sample_rand_number, mode_use_sample, interval_start=0, interval_end=86400, mode_use_specific_time=False):
     name = folder + "\\"
     if mode_use_sample:
         name += f"sample{sample_rand_number}_"
+    if mode_use_specific_time:
+        name += (time_operations.seconds_to_time_string(interval_start)).replace(":","")
+        name += "-"
+        name += (time_operations.seconds_to_time_string(interval_end)).replace(":","")
+        name += "_"
     return name
     
 
@@ -29,14 +41,33 @@ def initiate_name(folder, sample_rand_number, mode_use_sample):
 
 # Modes
 mode_testing                = False
+
 mode_create_sample          = False
 mode_use_sample             = False
-mode_count_requests         = False
-mode_request_count_outliers = False
-mode_analyze_report         = True
 
-# How many seconds are in each interval
-request_interval_size_seconds   = 3
+mode_count_logs             = False
+mode_log_count_outliers     = False
+mode_analyze_report         = False
+mode_plot_log_count_graph   = False
+
+mode_use_specific_time      = False
+mode_filter_specific_time   = False  # Requires mode_use_specific_time to be true
+
+mode_flag                   = True
+
+# Time interval
+## How many seconds are in each interval
+log_interval_size       = 3
+
+## Custom interval start and end times
+custom_interval_start   = time_operations.time_string_to_seconds("21:55:36")
+custom_interval_end     = time_operations.time_string_to_seconds("21:55:52")
+
+## Create a dictionary with all time intervals
+if mode_use_specific_time:
+    time_intervals = time_operations.create_time_intervals_dict(log_interval_size, custom_interval_start, custom_interval_end)
+else:
+    time_intervals = time_operations.create_time_intervals_dict(log_interval_size)
 
 # Files and folders
 current_directory       = os.getcwd()
@@ -53,7 +84,7 @@ sample_folder_path      = current_directory + "\\" + sample_folder_name
 
 
 if mode_create_sample:
-    sample_rand_number  = "_" + str(randint(10000,99999))
+    sample_rand_number  = "_n" + str(randint(10000,99999))
 else:
     sample_rand_number  = ""  # Choose which sample file you want to analyze
 
@@ -65,27 +96,42 @@ if mode_use_sample and os.path.exists(sample_file_name):
     log_file_name       = sample_file_name
     log_file_path       = sample_file_path
 
-## Report file
-reports_folder_name             = "reports"
-reports_folder_path             = current_directory + "\\" + reports_folder_name
+## Report files
+output_folder_name     = "reports"
+output_folder_path     = current_directory + "\\" + output_folder_name
 
-report_file_name                = initiate_name(reports_folder_name, sample_rand_number, mode_use_sample)
+output_name_base            = initiate_name(output_folder_name, sample_rand_number, mode_use_sample, custom_interval_start, custom_interval_end, mode_use_specific_time)
+output_file_name            = output_name_base
+report_to_analyze_file_name = output_name_base
 
-if mode_count_requests:
-    report_file_name            += f"requests_count_{request_interval_size_seconds}_sec_intervals.txt"
-elif mode_request_count_outliers:
-    report_to_analyze_file_name = report_file_name + f"requests_count_{request_interval_size_seconds}_sec_intervals.txt"
-    report_file_name            += f"outlier_logs_by_count_{request_interval_size_seconds}.txt"
+
+if mode_count_logs or mode_plot_log_count_graph:
+    output_file_name            += f"logs_count_{log_interval_size}_sec_intervals.txt"
+
+elif mode_log_count_outliers:
+    output_file_name            += f"outlier_logs_by_count_{log_interval_size}.txt"
+    report_to_analyze_file_name += f"logs_count_{log_interval_size}_sec_intervals.txt"
+
 elif mode_analyze_report:
-    report_to_analyze_file_name = report_file_name + f"outlier_logs_by_count_{request_interval_size_seconds}.txt"
+    if mode_use_specific_time:
+        output_file_name            += "analysis_filtered_logs.txt"
+        report_to_analyze_file_name += "filtered_logs.txt"
+    else:
+        output_file_name            += f"analysis_outlier_logs_{log_interval_size}.txt"
+        report_to_analyze_file_name += f"outlier_logs_by_count_{log_interval_size}.txt"
+
+elif mode_filter_specific_time:
+    report_to_analyze_file_name += f"logs_count_{log_interval_size}_sec_intervals.txt"
+    output_file_name            += "filtered_logs.txt"
+
+elif mode_flag:
+    output_file_name            = "FLAG.txt"
+    if mode_use_specific_time:
+        report_to_analyze_file_name += "analysis_filtered_logs.txt"
+    else:
+        report_to_analyze_file_name += f"analysis_outlier_logs_{log_interval_size}.txt"
 else:
-    report_file_name            += "REPORT_ERROR.txt"
-
-## Find outliers in the request count
-analysis_request_count_file_name        = initiate_name(reports_folder_name, sample_rand_number, mode_use_sample) \
-                                        + f"analysis_outlier_logs_{request_interval_size_seconds}.txt"
-
-
+    output_file_name            += "REPORT_ERROR.txt"
 
 # Output
 description             = (f"""
@@ -108,81 +154,77 @@ if not(mode_testing):
     # Mode: Create a representative sample from the larger logset
     if mode_create_sample:
         print(f"Selecting 1 in every {sample_size}th line at random to create a sample...")
-        file_iteration.iterate_over_file(
+        iterate.iterate_over_file(
             log_file_name,
-            create_sample.create_sample,
+            sample.create_sample,
             sample_file_name,
             sample_size
             )
 
         execution_output = f"File {sample_file_name} created"
 
-    # Mode: count the amount of requests in a certain timeframe
-    elif mode_count_requests:
-        # Create a dictionary with all time intervals
-        time_intervals = time_operations.create_time_intervals_dict(request_interval_size_seconds)
-        print("Time intervals created for counting the amount of requests")
+    # Mode: count the amount of logs in a certain timeframe
+    elif mode_count_logs:      
+        # Create a dictionary which will hold the amount of logs in all time intervals
+        log_count = count_logs.create_logs_count_dict(time_intervals)
+        print("Empty log count dictionary created")
         
-        # Create a dictionary which will hold the amount of requests in all time intervals
-        requests_count = count_logs.create_requests_count_dict(time_intervals)
-        print("Empty request count dictionary created")
-        
-        # Fill the request count dictionary by iterating over the file
-        file_iteration.iterate_over_file(
+        # Fill the log count dictionary by iterating over the file
+        iterate.iterate_over_file(
             log_file_name,
-            count_logs.count_requests,
-            requests_count,
+            count_logs.count_logs,
+            log_count,
             time_intervals
         )
-        print(f"File {log_file_name} read, requests counted")
+        print(f"File {log_file_name} read, logs counted")
 
-        # Create a report which shows the intervals and the amount of requests in them
-        count_logs.create_requests_count_report(requests_count, report_file_name)
+        # Create a report which shows the intervals and the amount of logs in them
+        count_logs.create_logs_count_report(log_count, output_file_name)
 
-        execution_output = f"Report file {report_file_name} created successfully"
+        execution_output = f"Report file {output_file_name} created successfully"
 
-    # Mode: find outliers in the request count report
-    elif mode_request_count_outliers:
-        # Make a list with all the amounts of requests generated in the mode_count_requests.
-        count_request_report_numbers = []
-        file_iteration.iterate_over_file(
+    # Mode: find outliers in the log count report
+    elif mode_log_count_outliers:
+        # Make a list with all the amounts of logs generated in the mode_count_logs.
+        count_log_report_numbers = []
+        iterate.iterate_over_file(
             report_to_analyze_file_name,
-            log_count_outliers.gather_results,
-            count_request_report_numbers
+            outliers.gather_results,
+            count_log_report_numbers
         )
         print("Created a list with all the amount of logs during the selected intervals")
         
         # Calculate the mean, median, mode, min, max, max (top_size), ... of the list
         top_size = 10
-        count_request_statistical_numbers = log_count_outliers.get_statistically_relevant_numbers(count_request_report_numbers, top_size)
+        count_logs_statistical_numbers = outliers.get_statistically_relevant_numbers(count_log_report_numbers, top_size)
 
-        # Find the intervals which have among the top (top_size) amounts of requests
+        # Find the intervals which have among the top (top_size) amounts of logs
         intervals_in_top = []
-        file_iteration.iterate_over_file(
+        iterate.iterate_over_file(
             report_to_analyze_file_name,
-            log_count_outliers.get_intervals_within_top_5_requests,
+            outliers.get_intervals_within_top_5_logs,
             intervals_in_top,
-            count_request_statistical_numbers["top"]
+            count_logs_statistical_numbers["top"]
         )
         print("Found the intervals whith the largest amount of logs")
 
         # Create a new report file containing the logs that fall within the previously selected intervals
-        file_iteration.iterate_over_file(
+        iterate.iterate_over_file(
             log_file_name,
-            log_count_outliers.create_analysis,
-            report_file_name,
+            outliers.filter_logs,
+            output_file_name,
             intervals_in_top
         )
-        execution_output = f"Logs analyzed, report created at {report_file_name}"
+        execution_output = f"Logs analyzed, report created at {output_file_name}"
 
     # Mode: analyze the report with the outliers and create a new report based on the biggest outliers
     elif mode_analyze_report:
-        # Analyze the log report made in mode_request_count_outliers and count how many times each IP and port appear
+        # Analyze the log report made in mode_log_count_outliers and count how many times each IP and port appear
         outlier_source_ip_port_count    = {}
         outlier_source_ip_count         = {}
-        file_iteration.iterate_over_file(
+        iterate.iterate_over_file(
             report_to_analyze_file_name,
-            analyze_report.analyze_log,
+            analyze.analyze_log,
             outlier_source_ip_port_count,
             outlier_source_ip_count
         )
@@ -194,10 +236,52 @@ if not(mode_testing):
         outlier_source_ip_count_top       = dict(sorted(outlier_source_ip_count.items(), key=lambda x : x[1]['total'], reverse=True)[:top_size])
 
         # Create a report with the top IP-port combinations
-        analyze_report.create_analysis_report(outlier_source_ip_port_count_top, analysis_request_count_file_name)
+        analyze.create_analysis_report(outlier_source_ip_port_count_top, output_file_name)
 
-        execution_output = f"Biggest outliers analyzed, report created at {analysis_request_count_file_name}"
+        execution_output = f"Biggest outliers analyzed, report created at {output_file_name}"
 
+    # Mode: plot a graph from the log file to give an overview
+    elif mode_plot_log_count_graph:
+        x_axis_data = []
+        y_axis_data = []
+
+        iterate.iterate_over_file(
+            output_file_name,
+            graph.get_data,
+            x_axis_data,
+            y_axis_data
+        )
+
+        graph.plot_data(
+            x_data      = x_axis_data, 
+            x_axis_name = "time", 
+            y_data      = y_axis_data, 
+            y_axis_name = "amount of requests", 
+            title       = f"Requests in {log_interval_size} second intervals"
+        )
+    
+        execution_output = f"Plotting of {output_file_name} done"
+
+    # Mode: create a log file containing only lines from a specific time
+    elif mode_filter_specific_time:
+        # Create a log containing only the lines from the selected time
+        iterate.iterate_over_file(
+            log_file_name,
+            outliers.filter_logs,
+            output_file_name,
+            time_intervals            
+        )
+
+        execution_output = f"Filtering done, created {output_file_name}"
+    
+    # Mode: create a flag
+    elif mode_flag:
+        # Create the flag based on the top 5 ip:port combinations
+        flag_content = flag.create_flag(report_to_analyze_file_name)
+        # Write the flag to an output file
+        flag.write_flag_doc(output_file_name, flag_content)
+
+        execution_output = f"Flag '{flag_content}' written to {output_file_name}"
     # Descriptive text
     print(execution_output)
     print(">>> Script complete")
@@ -206,5 +290,8 @@ if not(mode_testing):
 ### TESTING ###
 ###############
 else:
-    
+    print(output_file_name)
+    print(report_to_analyze_file_name)
+
+    # Interesting time: 21u52- 21u58
     print("Test complete")

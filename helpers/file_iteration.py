@@ -28,7 +28,7 @@ def iterate_over_file(file_name, func, *arguments):
     """
     line        = True
     counter     = 0
-    intervals   = create_print_triggers(3600 * 5)
+    intervals   = create_print_triggers(3600 * 3)
     
     with open(file_name, 'r') as file:
         while line:

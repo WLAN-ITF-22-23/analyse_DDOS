@@ -69,12 +69,14 @@ def time_interval_calculator(current_time_str, time_difference_int):
     return new_time_str
 
 
-def create_time_intervals_dict(interval_size):
+def create_time_intervals_dict(interval_size, time_difference_start=0, time_max=86400):
     """This function creates a dictionary of different time intervals, 
     which can be searched to check in which interval a given time in seconds (between 0 and 86400) falls.
 
     Args:
-        interval_size (int): the size of the intervals in seconds
+        interval_size (int): The size of the intervals in seconds
+        time_difference_start(int): The time when the intervals starts (in seconds). Default 0
+        time_max: The time when the intervals end (in seconds). Default 86400, which corresponds with 24:00:00
 
     Returns:
         dict: a dictionary with the following structure:
@@ -83,11 +85,9 @@ def create_time_intervals_dict(interval_size):
         >> interval_start (int): the start of the interval in seconds\n
         >> interval_end (int): the end of the interval in seconds
     """
-    time_difference_start   = 0
-    time_max_int            = 86400
     time_intervals_dict     = {}
 
-    while time_difference_start < time_max_int:
+    while time_difference_start < time_max:
         time_difference_end = time_difference_start + interval_size
         time_intervals_dict[f"{seconds_to_time_string(time_difference_start)} {seconds_to_time_string(time_difference_end)}"] = \
             [time_difference_start, time_difference_end]

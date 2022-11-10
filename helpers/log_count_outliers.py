@@ -19,11 +19,11 @@ from .time_operations import is_in_interval
 #################
 
 def gather_results(result_list, line):
-    """This function adds the number of requests per timeframe in a requests_count log to a list
+    """This function adds the number of logs per timeframe in a logs_count log to a list
 
     Args:
-        result_list (list): the list to which the number of requests should be added
-        line (str): the line of the requests_count log that is being analyzed
+        result_list (list): the list to which the number of logs should be added
+        line (str): the line of the logs_count log that is being analyzed
     """
     line = line.split(" ")
     result_list.append(int(line[2]))
@@ -55,25 +55,25 @@ def get_statistically_relevant_numbers(result_list, top_size):
         }
 
 
-def get_intervals_within_top_5_requests(intervals, top_5, line):
-    """This function checks if the number of requests in an interval is within the top 5 number of requests per interval
+def get_intervals_within_top_5_logs(intervals, top_5, line):
+    """This function checks if the number of logs in an interval is within the top 5 number of logs per interval
 
     Args:
-        intervals (list): A list which will contain all the intervals that have a number of requests within the top 5
-        top_5 (list): The 5 highest request counts found with get_statistically_relevant_numbers
-        line (str): the line of the requests_count log that is being analyzed
+        intervals (list): An empty list which will contain all the intervals that have a number of logs within the top 5
+        top_5 (list): The 5 highest log counts found with get_statistically_relevant_numbers
+        line (str): the line of the logs_count log that is being analyzed
     """
     line = line.split(" ")
     if int(line[2]) in top_5:
         intervals.append(f"{line[0]} {line[1]}")
 
 
-def create_analysis(file_name, intervals, line):
+def filter_logs(file_name, intervals, line):
     """This function creates a log file containing all lines that fall within a given interval
 
     Args:
         file_name (str): The name of the report file to write to
-        intervals (list): A list of intervals created with get_intervals_within_top_5_requests()
+        intervals (list): A list of intervals created with get_intervals_within_top_5_logs()
         line (str): A line of the log file that is being analyzed
     """
     line_list = line.split(" ")
